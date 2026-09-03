@@ -1,58 +1,68 @@
-# Local LLM Server
+# SER8 Local LLM Server
 
-기존 Ubuntu 홈 게임 서버에 로컬 LLM 환경을 함께 구축하고, 제한된 하드웨어에서 실제 활용 가능성을 검증하는 프로젝트입니다.
+Minisforum SER8과 Ubuntu를 기반으로 직접 구축하고 운영하는 개인 로컬 LLM 서버 프로젝트입니다.
 
-## 현재 상태
+## Project Purpose
 
-마지막 업데이트: 2026-09-03
+기존 홈 서버에서 로컬 AI를 직접 구동하고, 실제 사용성과 자원 부담을 확인하기 위해 시작했습니다. Ollama와 OpenClaw를 연결한 현재 구성을 바탕으로 성능과 안정성을 검증하며 기능을 확장하고 있습니다.
 
-> **Phase 1 — Ollama 구동 및 OpenClaw 기본 연동 완료, 벤치마크 진행 중**
+## Server Environment
 
-- Ollama 설치 및 로컬 API 동작 확인
-- `qwen3:4b` 초기 구동 확인
-- `qwen3:8b` 다운로드 및 한국어 추론 확인
-- OpenClaw `2026.8.2` 설치
-- OpenClaw 기본 모델을 `ollama/qwen3:8b`로 설정
-- 정량 벤치마크와 게임 서버 동시 실행 테스트는 진행 예정
-- Open WebUI와 RAG는 아직 미구현
-
-## 서버 환경
-
-| 구분 | 사양 |
+| 항목 | 현재 환경 |
 | --- | --- |
-| 기기 | Minisforum SER8 |
-| CPU | AMD Ryzen 7 8745HS (8코어 16스레드) |
-| GPU | Radeon 780M 내장 그래픽 |
-| 메모리 | Micron DDR5 16GB |
-| 저장장치 | Samsung SSD 512GB |
-| 운영체제 | Ubuntu Desktop 24.04.4 LTS |
-| 기존 서비스 | Docker, Pterodactyl Wings |
-| 운영 방식 | 24시간 홈 서버 |
-| 게임 서버 | Minecraft, Palworld, Project Zomboid |
+| Hardware | Minisforum SER8 |
+| CPU | AMD Ryzen 7 8745HS |
+| Memory | DDR5 16GB |
+| OS | Ubuntu Desktop 24.04.4 LTS |
+| LLM Runtime | Ollama |
+| Main Model | `qwen3:8b` |
+| AI Agent | OpenClaw `2026.8.2` |
 
-## 진행 순서
+## Current Architecture
 
-1. Ollama 모델 구동 및 벤치마크
-2. 게임 서버와의 동시 실행 안정성 확인
-3. Open WebUI 구축
-4. RAG 구성 및 개인 문서 검색 실험
-5. OpenClaw 도구·자동화 범위 확장
-6. Pterodactyl 및 Discord 연동
+현재 실제로 동작을 확인한 구성만 표시합니다.
 
-## 문서
+```mermaid
+flowchart LR
+    A["OpenClaw"] --> B["Ollama"]
+    B --> C["qwen3:8b"]
+```
 
-- [현재 상황](docs/current-status.md)
-- [목표 아키텍처](docs/architecture.md)
-- [Ollama 벤치마크 계획](docs/benchmark-plan.md)
-- [로드맵](docs/roadmap.md)
+## Current Status
 
-## 원칙
+### Completed
 
-- 게임 서버의 안정성을 우선한다.
-- 16GB 메모리에서 무리하게 큰 모델을 운영하지 않는다.
-- 실제 측정 결과를 기준으로 모델과 구성을 결정한다.
-- 설치 과정, 설정 변경, 실패 사례까지 기록한다.
+- [x] Ollama 설치 및 실행
+- [x] `qwen3:8b` 실행
+- [x] OpenClaw 설치
+- [x] OpenClaw 기본 모델을 `ollama/qwen3:8b`로 설정
+- [x] OpenClaw → Ollama 직접 추론 1차 성공
 
-## AI 사용 고지
+### Verification Pending
 
-이 프로젝트의 설계와 문서 작성에는 ChatGPT의 도움을 사용했습니다. 최종 구성과 검증은 실제 서버 환경을 기준으로 진행합니다.
+- [ ] 반복 추론 안정성 확인
+- [ ] 재부팅 이후 동일 구성 재현
+- [ ] CPU, 메모리, 스왑 사용량 측정
+- [ ] 응답 속도와 게임 서버 동시 실행 성능 측정
+
+## Verified Result
+
+2026-09-02, SER8의 Ubuntu 환경에서 `OpenClaw → Ollama → qwen3:8b` 경로로 실제 추론 요청과 응답에 성공했습니다. 기본 모델 설정뿐 아니라 전체 추론 경로가 동작하는 것을 확인한 1차 검증 결과입니다.
+
+실행 화면은 민감정보를 정리한 뒤 이 위치에 추가할 예정입니다.
+
+## Next Steps
+
+- `qwen3:8b` 자원 사용량과 응답 속도 측정
+- 반복 요청 및 재부팅 후 재현성 확인
+- 기존 게임 서버와의 동시 실행 테스트
+
+## Documentation
+
+- [Build Log](docs/build-log.md) — 실제 설치와 연결 과정
+- [Benchmark](docs/benchmark.md) — 측정 기준과 결과
+- [Roadmap](docs/roadmap.md) — 다음 작업과 장기 계획
+
+## AI Assistance
+
+개발 과정의 문제 해결과 문서 정리에 ChatGPT를 보조 도구로 활용했습니다. 설치, 설정 및 동작 검증은 실제 SER8 서버 환경에서 직접 수행했습니다.
