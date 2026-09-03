@@ -2,9 +2,19 @@
 .env
 .env.*
 !.env.example
+secrets/
+credentials/
+*.key
+*.pem
+*.bak
+openclaw.json
+ptero-openclaw/
+api-response*.json
+raw-response*.json
 
 # 로그 및 실행 데이터
 *.log
+logs/
 data/
 models/
 backups/

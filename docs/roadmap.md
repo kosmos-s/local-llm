@@ -2,28 +2,33 @@
 
 ## 완료
 
-- [x] Ollama 설치 및 실행
-- [x] `qwen3:8b` 로컬 추론 확인
-- [x] OpenClaw 설치
-- [x] OpenClaw 기본 모델을 `ollama/qwen3:8b`로 설정
-- [x] OpenClaw → Ollama 직접 추론 1차 성공
-- [x] 현재 구축 상태 GitHub 기록
+- [x] Ubuntu 호스트에 Ollama 설치
+- [x] Radeon 780M Vulkan GPU 추론 활성화 및 `100% GPU` 확인
+- [x] Qwen3 계열 비교 후 Qwen3.5 중심으로 모델 전환
+- [x] `qwen3.5:4b`, `qwen3.5:9b`, `bge-m3` 역할 분리
+- [x] Docker 기반 Open WebUI 구축 및 채팅 확인
+- [x] BGE-M3 기반 Knowledge / RAG 구축 및 출처 검증
+- [x] OpenClaw 설치와 loopback Gateway 구성
+- [x] OpenClaw 기본 모델을 `ollama/qwen3.5:4b`로 연결
+- [x] Ubuntu 기본 상태 조회 Agent 동작 확인
+- [x] Pterodactyl 읽기 전용 상태 조회 구현 및 자연어 호출 확인
 
-## 다음 작업
+## 진행 중
 
-- [ ] 반복 추론 안정성 확인
-- [ ] 재부팅 이후 동일 구성 재현
-- [ ] CPU, 메모리, 스왑 및 온도 측정
-- [ ] `qwen3:8b` 응답 속도 벤치마크
-- [ ] 게임 서버 동시 실행 테스트
-- [ ] 검증된 실행 화면 추가
+- [ ] Pterodactyl `start` / `stop` / `restart` 제어 명령 안정화
+- [ ] 상태 변경 작업의 사용자 승인 흐름 검증
+- [ ] OpenClaw Workspace 파일 축소와 Context 추가 최적화
 
-## 추후 계획
+서버 제어 기능은 정확한 대상 선택을 DRY-RUN으로 확인한 단계입니다. 자연어 요청에서 명령을 안정적으로 선택하고 승인 후 실행하는 전체 흐름은 아직 완료되지 않았습니다.
 
-- [ ] Open WebUI 검토 및 구축
-- [ ] 개인 문서 검색을 위한 RAG 실험
-- [ ] OpenClaw 도구 권한과 자동화 범위 확장
-- [ ] Pterodactyl 및 Discord 연동 검토
-- [ ] 반복 측정을 위한 벤치마크 스크립트 작성
+## 예정
 
-완료 여부는 실제 SER8 서버에서 직접 확인한 결과를 기준으로 갱신합니다.
+- [ ] Open WebUI와 OpenClaw의 접근 범위 및 운영 방식 정리
+- [ ] 외부 접속이 필요할 경우 HTTPS 적용
+- [ ] Reverse Proxy 구성
+- [ ] 도메인 연결
+- [ ] 외부 접속 인증과 보안 정책 검토
+- [ ] OpenClaw Agent 기능 확장
+- [ ] 필요 시 모니터링 및 로그 분석 자동화
+
+완료 여부는 실제 SER8 서버에서 직접 동작을 확인한 결과를 기준으로 갱신합니다.
