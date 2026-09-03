@@ -103,6 +103,9 @@ Ollama API를 직접 호출하면 응답했지만 OpenClaw Agent에서는 매우
 - Dreaming 비활성화
 - Memory Search를 Ollama와 BGE-M3 조합으로 변경
 - Exec Policy를 `cautious`로 변경
+- AGENTS.md의 중복 규칙 제거
+- 불필요하게 누적된 Pterodactyl 지침 제거
+- Workspace 프롬프트 정리
 
 현재 Exec 정책은 다음과 같습니다.
 
@@ -117,8 +120,38 @@ ask = on-miss
 
 - OpenClaw 기본 모델을 `ollama/qwen3.5:4b`로 변경
 - Context를 8192로 조정하고 Thinking OFF 적용
+- System prompt estimate 약 2,898 tokens
+- Tracked prompt estimate 약 3,173 tokens
+- AGENTS.md 약 316 tokens
+- Tool schemas 약 275 tokens
+- 사용 도구를 `exec`, `session_status`로 축소
+- Ollama runtime에서 `qwen3.5:4b`의 `100% GPU`, Context 8192 확인
 - `openclaw infer model run`에서 약 3.14초 만에 정상 한국어 응답 확인
-- 추가적인 Workspace 및 Context 최적화는 계속 진행 중
+
+초기 약 13K token 수준과 비교해 작은 로컬 모델이 실제 요청을 처리할 수 있는 크기로 줄였습니다.
+
+## Exec 권한을 승인 기반 정책으로 변경
+
+### 문제
+
+초기 Exec 설정은 `security=full`, `ask=off`로 OpenClaw가 별도 승인 없이 shell 명령을 실행할 수 있는 상태였습니다. 서버 조회와 상태 변경이 같은 권한으로 동작하는 것은 홈서버 운영에 적합하지 않았습니다.
+
+### 해결
+
+Exec Policy를 `cautious`로 바꾸고 다음 정책을 적용했습니다.
+
+```text
+security = allowlist
+ask = on-miss
+```
+
+- 안전한 읽기 전용 조회만 allowlist에 등록
+- 서버 시작·종료·재시작은 영구 허용하지 않음
+- 상태 변경 명령은 실행할 때마다 `Allow once` 승인
+
+### 결과
+
+OpenClaw에 무제한 shell access를 주지 않으면서 상태 조회는 간단하게 유지하고, 실제 서버 제어에는 사용자의 명시적인 승인이 필요하도록 분리했습니다.
 
 ## Pterodactyl API 응답의 민감정보 노출 방지
 
@@ -148,8 +181,37 @@ API Token, 환경 변수, 관리자 비밀번호 및 원본 JSON은 출력하거
 - 특정 서버 조회 시 정확히 일치하는 이름을 우선 선택하도록 구현
 - 조회 기능은 읽기 전용 명령으로 allowlist 적용 가능
 
-## Pterodactyl 서버 제어 기능
+## 작은 모델의 서버 제어 명령 생성 문제
 
-서버 시작·종료·재시작용 `ptero-start`, `ptero-stop`, `ptero-restart`를 개발하고 있습니다. Pterodactyl Client API의 power endpoint를 사용하며 상태 변경 전 사용자 승인을 필수로 하는 방향입니다.
+### 문제
 
-현재 DRY-RUN에서는 `팰월드`와 `박현종의 팰월드`를 정확히 구분해 START 작업을 준비하는 것까지 확인했습니다. 자연어 요청에서 제어 명령을 안정적으로 선택하는 과정은 아직 조정 중이므로 완료 기능으로 기록하지 않습니다.
+Qwen3.5 4B가 자연어 요청마다 Pterodactyl API 호출 형식과 긴 명령 구문을 직접 조합하도록 하면 안정성이 떨어졌습니다. `팰월드`와 `박현종의 팰월드`처럼 이름 일부가 겹치는 서버를 잘못 선택할 위험도 있었습니다.
+
+### 해결
+
+복잡한 처리는 내부 `ptero-control`에 모으고 OpenClaw에는 작은 전용 인터페이스만 제공했습니다.
+
+- `ptero-status`: 상태 조회
+- `ptero-start`: 서버 시작
+- `ptero-stop`: 서버 종료
+- `ptero-restart`: 서버 재시작
+
+각 wrapper는 정확한 서버 이름을 전달하고 내부적으로 Pterodactyl Client API의 power endpoint를 사용합니다. DRY-RUN에서 `팰월드`와 `박현종의 팰월드`를 별개의 대상으로 정확히 구분하는 것을 먼저 확인했습니다.
+
+### 실동작 검증
+
+1. OpenClaw에 “팰월드 서버 켜줘”라고 자연어로 요청
+2. Qwen3.5 4B가 `ptero-start` 선택
+3. Exec Approval에서 사용자가 `Allow once` 승인
+4. Pterodactyl Client API로 서버 시작
+5. `ptero-status`로 상태와 자원 사용량 재조회
+6. OpenClaw가 RUNNING 상태, CPU, RAM, Disk를 한국어로 보고
+
+같은 구조로 서버 종료와 재시작도 정상 동작하는 것을 확인했습니다.
+
+### 결과
+
+- 상태 조회, 시작, 종료, 재시작 실동작 검증 완료
+- 제어 후 상태 재확인 완료
+- 작은 모델이 복잡한 API 구문을 직접 만들지 않고 제한된 wrapper를 선택하도록 단순화
+- 조회와 제어 권한을 분리하고 상태 변경에는 매번 사용자 승인 적용

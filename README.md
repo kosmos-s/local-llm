@@ -32,7 +32,7 @@ flowchart TB
     Q9 --> WebUI["Open WebUI · 대화"]
     Q9 --> RAG["Open WebUI · Knowledge / RAG"]
     BGE --> RAG["Open WebUI · Knowledge / RAG"]
-    OpenClaw -->|읽기 전용 조회| Ptero["Pterodactyl Client API"]
+    OpenClaw -->|상태 조회 · 승인 기반 제어| Ptero["Pterodactyl Client API"]
     Ptero --> Games["Game Servers"]
 ```
 
@@ -51,19 +51,20 @@ OpenClaw Gateway는 `127.0.0.1:18789`에만 바인딩하고, Windows PC에서 SS
 - [x] OpenClaw 기본 모델을 `ollama/qwen3.5:4b`로 설정
 - [x] OpenClaw에서 Ubuntu 기본 상태 조회 확인
 - [x] Pterodactyl 읽기 전용 상태 조회 도구 구현 및 자연어 호출 확인
+- [x] Pterodactyl 서버 시작·종료·재시작 실동작 확인
+- [x] 제어 후 서버 상태와 자원 사용량 재조회 확인
+- [x] OpenClaw Context 및 Workspace 프롬프트 최적화
+- [x] Exec 정책을 `allowlist`와 `on-miss` 승인 방식으로 변경
 
-### 진행 중
+상태 조회는 허용된 읽기 전용 명령으로 실행하고, 시작·종료·재시작은 실행할 때마다 사용자가 `Allow once`로 승인합니다.
 
-- [ ] Pterodactyl 서버 시작·종료·재시작 명령 선택 안정화
-- [ ] OpenClaw Workspace 및 Context 추가 최적화
-
-Pterodactyl 제어 기능은 DRY-RUN에서 같은 단어가 포함된 서버를 정확히 구분하는 단계까지 확인했습니다. 실제 제어 명령은 사용자 승인을 필수로 하며, 자연어 요청에서 명령을 안정적으로 선택하는 부분은 아직 완료되지 않았습니다.
+`자연어 요청 → Qwen3.5 4B → 전용 wrapper → 사용자 승인 → Pterodactyl Client API → 상태 재조회 → 한국어 결과` 흐름으로 동작합니다.
 
 ## 모델 역할
 
 | 모델 | 역할 | 현재 설정 및 확인 결과 |
 | --- | --- | --- |
-| `qwen3.5:4b` | OpenClaw Agent, 서버 상태 조회, Tool Calling | Context 8192, Thinking OFF, 100% GPU |
+| `qwen3.5:4b` | OpenClaw Agent, 서버 상태 조회·제어, Tool Calling | Context 8192, Thinking OFF, 100% GPU |
 | `qwen3.5:9b` | Open WebUI 대화, 코딩, RAG 답변 생성 | Context 8192, Thinking OFF, 100% GPU |
 | `bge-m3` | Open WebUI RAG 임베딩 | Ollama Embedding Model로 설정 |
 
@@ -78,15 +79,25 @@ Pterodactyl 제어 기능은 DRY-RUN에서 같은 단어가 포함된 서버를 
 - OpenClaw에서 `qwen3.5:4b` 한국어 추론과 Ubuntu 명령 실행 확인
 - “현재 어떤 게임 서버가 켜져 있는지 확인해줘”라는 요청으로 실제 Pterodactyl 상태 조회 확인
 - 특정 서버 이름을 지정한 조회도 정확 일치 우선으로 동작하는 것 확인
+- 자연어 요청으로 Pterodactyl 서버 시작·종료·재시작 확인
+- 상태 변경 전 사용자 승인과 제어 후 RUNNING 상태·CPU·RAM·Disk 재조회 확인
 
 ## 주요 문제 해결 경험
 
 - Ollama가 내장 GPU를 제외하던 문제를 로그로 추적하고 `OLLAMA_IGPU_ENABLE=1`로 해결
 - Qwen3 14B의 Vulkan 메모리 부족을 확인하고 하드웨어에 맞게 모델 구성을 재선정
-- 약 13K token까지 증가한 OpenClaw Context를 분석해 Tool·Skills·Workspace 사용량을 축소
+- 약 13K token까지 증가한 OpenClaw Context를 분석해 Tracked Prompt Estimate를 약 3,173 tokens로 축소
 - Pterodactyl API 원본 응답의 민감정보 노출 가능성을 확인하고 필요한 상태만 출력하는 읽기 전용 도구로 분리
+- 작은 모델이 API 명령을 안정적으로 만들지 못한 문제를 `ptero-control`과 단순한 start·stop·restart wrapper로 해결
 
 자세한 원인과 해결 과정은 [구축 기록](docs/build-log.md)에 정리했습니다.
+
+## 보안 설계
+
+- OpenClaw Gateway는 loopback에만 바인딩하고 SSH 터널과 Gateway Token으로 접속
+- Pterodactyl 인증 파일은 서버 로컬에 보관하고 권한을 `600`으로 제한
+- API 원본 JSON 대신 필요한 상태만 반환하는 wrapper 사용
+- 읽기 전용 조회는 allowlist로 제한하고 상태 변경은 매번 사용자 승인 필요
 
 ## 문서
 

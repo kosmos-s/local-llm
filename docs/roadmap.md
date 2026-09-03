@@ -10,16 +10,19 @@
 - [x] BGE-M3 기반 Knowledge / RAG 구축 및 출처 검증
 - [x] OpenClaw 설치와 loopback Gateway 구성
 - [x] OpenClaw 기본 모델을 `ollama/qwen3.5:4b`로 연결
+- [x] OpenClaw Context와 Workspace 프롬프트 최적화
+- [x] Exec 권한을 `allowlist`와 `on-miss` 승인 정책으로 변경
 - [x] Ubuntu 기본 상태 조회 Agent 동작 확인
+- [x] Pterodactyl Client API 연동
 - [x] Pterodactyl 읽기 전용 상태 조회 구현 및 자연어 호출 확인
+- [x] Pterodactyl 서버 시작·종료·재시작 실동작 확인
+- [x] 상태 변경 전 사용자 승인과 제어 후 상태 재검증 확인
 
-## 진행 중
+## 다음 단계
 
-- [ ] Pterodactyl `start` / `stop` / `restart` 제어 명령 안정화
-- [ ] 상태 변경 작업의 사용자 승인 흐름 검증
-- [ ] OpenClaw Workspace 파일 축소와 Context 추가 최적화
-
-서버 제어 기능은 정확한 대상 선택을 DRY-RUN으로 확인한 단계입니다. 자연어 요청에서 명령을 안정적으로 선택하고 승인 후 실행하는 전체 흐름은 아직 완료되지 않았습니다.
+- [ ] OpenClaw 응답 속도 추가 최적화
+- [ ] Agent 로그와 장애 대응 방식 개선
+- [ ] 장기 운영 안정성 확인
 
 ## 예정
 
@@ -30,5 +33,6 @@
 - [ ] 외부 접속 인증과 보안 정책 검토
 - [ ] OpenClaw Agent 기능 확장
 - [ ] 필요 시 모니터링 및 로그 분석 자동화
+- [ ] 필요 시 기존 Discord/Pterodactyl 프로젝트와 연계
 
 완료 여부는 실제 SER8 서버에서 직접 동작을 확인한 결과를 기준으로 갱신합니다.
