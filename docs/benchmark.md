@@ -49,10 +49,17 @@ vk::Queue::submit: ErrorDeviceLost
 | `qwen3.5:4b` | `openclaw infer model run` | Context 8192, Thinking OFF, 100% GPU | 약 3.14초, 정상 한국어 응답 |
 | `qwen3.5:9b` | Ollama 테스트 | Context 8192, Thinking OFF, 100% GPU, 첫 로딩 포함 | 약 5.34초, 짧은 한국어 응답 |
 
+## 운영 점검 시간
+
+| 항목 | 조건 | 확인 결과 |
+| --- | --- | --- |
+| OpenClaw Heartbeat | `qwen3.5:4b`, `ser8-health`, 경량 Context, 격리 세션 | 약 9~17초, status `ok`, completion status `succeeded` |
+
 ## 측정값 해석 시 주의사항
 
 - Qwen3의 `tok/s`는 생성 속도이고, Qwen3.5의 초 단위 값은 요청부터 응답까지의 경과 시간입니다.
 - 프롬프트, 출력 길이, 모델 로딩 여부와 호출 경로가 서로 달라 두 수치를 같은 성능 지표처럼 직접 비교할 수 없습니다.
 - `qwen3.5:9b`의 약 5.34초에는 첫 모델 로딩 시간이 포함되어 있습니다.
+- Heartbeat 시간은 여러 서비스와 자원을 확인하는 전체 점검 시간으로, 모델 응답 속도와 직접 비교할 수 없습니다.
 - 아직 동일 프롬프트를 사용한 반복 측정이나 게임 서버 동시 실행 비교는 진행하지 않았습니다.
 - 측정하지 않은 처리량, 메모리 사용량, 온도 값은 추측해 기록하지 않습니다.

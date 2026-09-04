@@ -7,6 +7,14 @@ credentials/
 *.key
 *.pem
 *.bak
+*.db
+*.sqlite
+*.sqlite-*
+*.tar
+*.tar.gz
+*.gpg
+SHA256SUMS
+ser8-backup*/
 openclaw.json
 ptero-openclaw/
 api-response*.json

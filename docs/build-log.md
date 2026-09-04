@@ -112,6 +112,7 @@ Ollama API를 직접 호출하면 응답했지만 OpenClaw Agent에서는 매우
 ```text
 security = allowlist
 ask = on-miss
+askFallback = deny
 ```
 
 읽기 전용으로 허용한 명령은 자동 실행할 수 있고, 새로운 명령이나 상태 변경 작업은 사용자 승인을 요청합니다.
@@ -143,6 +144,7 @@ Exec Policy를 `cautious`로 바꾸고 다음 정책을 적용했습니다.
 ```text
 security = allowlist
 ask = on-miss
+askFallback = deny
 ```
 
 - 안전한 읽기 전용 조회만 allowlist에 등록
@@ -215,3 +217,145 @@ Qwen3.5 4B가 자연어 요청마다 Pterodactyl API 호출 형식과 긴 명령
 - 제어 후 상태 재확인 완료
 - 작은 모델이 복잡한 API 구문을 직접 만들지 않고 제한된 wrapper를 선택하도록 단순화
 - 조회와 제어 권한을 분리하고 상태 변경에는 매번 사용자 승인 적용
+
+## 통합 Health Check의 잘못된 Docker 판정
+
+### 문제
+
+Ollama, OpenClaw, Open WebUI, Wings와 서버 자원을 한 번에 확인하기 위해 `~/.local/bin/ser8-health`를 만들었습니다. 초기 구현은 내부에서 `sudo docker`를 사용해 터미널에서는 동작했지만, OpenClaw의 비대화형 실행에서는 권한 입력을 처리하지 못해 Docker와 Open WebUI 상태를 잘못 판정했습니다.
+
+### 원인
+
+- 비대화형 실행에는 `sudo` 비밀번호를 입력할 터미널이 없음
+- 컨테이너 상태만으로 실제 웹 서비스 응답까지 판단하기 어려움
+- 시스템 언어에 따라 `free -h` 출력 형식이 달라질 수 있음
+- `ollama ps`의 `UNTIL`을 장애나 종료 예정 시각으로 오해할 수 있음
+
+### 해결
+
+- Health Check 내부에서 `sudo` 제거
+- Open WebUI는 HTTP endpoint 응답으로 확인
+- daemon은 systemd 상태로 확인
+- 메모리 확인에 `LC_ALL=C free -h` 사용
+- Ollama의 `UNTIL` 값을 idle unload time으로 명시
+
+`ser8-health`는 현재 다음 항목을 한 번에 확인합니다.
+
+- Ollama와 Ollama API
+- OpenClaw와 Open WebUI
+- Wings와 Docker
+- CPU Load, RAM, Swap, Disk, Uptime
+- Ollama에 로딩된 모델
+- Pterodactyl 서버 상태
+
+### 결과
+
+OpenClaw에 “서버 전체 상태 점검해줘”라고 요청하면 `ser8-health`를 실행하고 결과를 정상적으로 요약합니다.
+
+## Heartbeat `no-route` 문제
+
+### 문제
+
+OpenClaw Heartbeat를 30분 간격 자동 Health Check로 설정했지만 다음 상태로 건너뛰었습니다.
+
+```text
+heartbeat skipped: no-route
+```
+
+### 원인
+
+Heartbeat 대상이 `target=last`였지만 Control UI만 사용하고 있어 결과를 전달할 외부 route가 없었습니다.
+
+### 해결
+
+외부 전송이 아닌 내부 점검이 목적이므로 `target=none`으로 변경했습니다. 현재 설정의 핵심은 다음과 같습니다.
+
+- 실행 간격: 30분
+- 모델: `ollama/qwen3.5:4b`
+- `lightContext=true`
+- `isolatedSession=true`
+- `timeoutSeconds=90`
+- `target=none`
+- 점검 도구는 `ser8-health`로 제한
+
+모든 주요 서비스가 정상이고 FAIL 또는 WARN이 없으면 `NO_REPLY`로 종료합니다. Ollama의 idle unload time과 의도적으로 꺼둔 Pterodactyl 서버는 오류로 취급하지 않습니다.
+
+### 결과
+
+- 수동 Heartbeat 실행 상태 `ok`
+- completion status `succeeded`
+- 실행 시간 약 9~17초
+- 30분 내부 자동 Health Check 동작 확인
+
+현재 `target=none`이므로 장애 발생 시 외부로 능동 알림을 보내지는 않습니다. Discord 알림 연동은 의도적으로 보류했습니다.
+
+## 재부팅 후 자동 복구 검증
+
+### 검증 목적
+
+설정 파일만 확인하는 대신 실제 Ubuntu 재부팅 후 서비스가 사람의 개입 없이 복구되는지 점검했습니다.
+
+### 확인 결과
+
+- Ollama, OpenClaw, Wings: enabled 및 active
+- OpenClaw user service와 `Linger=yes` 확인
+- Open WebUI: Docker `restart=unless-stopped`로 자동 실행
+- Ollama API와 Open WebUI HTTP 200 응답 확인
+- OpenClaw `18789`, Ollama `11434`, Open WebUI `3000`, Wings `8080` 포트 확인
+- 부팅 직후 로딩된 Ollama 모델이 없는 정상 유휴 상태 확인
+- Ollama 상태 API가 약 0.03초 만에 응답
+- 사용 가능 메모리 약 12GiB, Swap 0B 확인
+
+재부팅 후 Ollama, OpenClaw, Wings 로그에서 error, failed, timeout, OOM, DeviceLost 계열 문제를 발견하지 못했습니다.
+
+## Local AI 백업 범위 설계
+
+### 문제
+
+복구에 필요한 Local AI 데이터와 대용량 모델·게임 서버 데이터를 구분하지 않으면 백업이 불필요하게 커지고 프로젝트 범위도 모호해집니다.
+
+### 해결
+
+`~/ser8-backup`에 Local AI 환경 복구에 필요한 항목만 모았습니다.
+
+- OpenClaw 설정, Workspace, Memory, SQLite DB와 user service 참고본
+- `ptero-status`, `ptero-control`, start·stop·restart wrapper, `ser8-health`
+- Ollama service 참고본과 `OLLAMA_IGPU_ENABLE=1` override
+- Open WebUI의 `/app/backend/data` Docker volume 데이터
+- `~/llm-knowledge` RAG 원본 문서
+- 별도 `secrets/` 영역의 Pterodactyl 인증 파일
+
+Ollama 모델 파일은 백업하지 않고 복구 시 `qwen3.5:4b`, `qwen3.5:9b`, `bge-m3`를 다시 내려받도록 했습니다. Pterodactyl Panel DB, Wings 전체 설정, 게임 서버 월드와 세이브는 이 Local AI 프로젝트의 백업 범위에서 제외했습니다.
+
+### 검증
+
+- Local AI 백업 크기 약 979MB
+- Open WebUI, RAG 원본, OpenClaw Memory tar archive 확인
+- `openclaw.sqlite`, `openclaw-agent.sqlite`의 `PRAGMA quick_check` 결과 `ok`
+- 내부 `SHA256SUMS` 전체 검증 성공
+
+## 암호화 외부 백업과 복구 절차
+
+### 보안과 외부 복사
+
+Local AI 백업 전체를 tar.gz로 묶고 GPG symmetric AES256 방식으로 암호화했습니다. 암호는 명령 인자가 아닌 입력 방식으로 처리해 shell history에 남기지 않았습니다.
+
+암호화 후 실제 복호화와 tar 목록 확인을 수행했으며, 검증이 끝난 평문 archive는 삭제했습니다. 약 967MB의 암호화 파일은 SCP로 Windows PC에 복사해 서버와 외부 PC 두 위치에 보관했습니다.
+
+### 무결성 검증
+
+SER8에서 계산한 암호화 파일의 SHA256과 Windows의 `certutil -hashfile` 결과가 완전히 일치하는 것을 확인했습니다. 이로써 암호화, 외부 전송, 전송 후 무결성까지 검증했습니다.
+
+### 복구 절차
+
+백업 내부에 `RECOVERY.md`를 작성해 다음 흐름을 기록했습니다.
+
+1. 새 Ubuntu에 Docker, Ollama, Node, OpenClaw 설치
+2. Radeon 780M override 복원
+3. Ollama 모델 재다운로드
+4. OpenClaw 설정, DB, Workspace와 관리 wrapper 복원
+5. Pterodactyl API Secret 복원
+6. Open WebUI volume과 RAG 원본 복원
+7. `ser8-health`로 최종 검증
+
+버전 변경 가능성을 고려해 기존 systemd service 전체를 무조건 덮어쓰지 않고, 새 설치본을 우선한 뒤 custom override를 복원하는 방향으로 정리했습니다. `RECOVERY.md`와 실제 백업 파일은 운영용 백업 내부에만 보관하며 GitHub 저장소에는 추가하지 않습니다.

@@ -34,6 +34,8 @@ flowchart TB
     BGE --> RAG["Open WebUI · Knowledge / RAG"]
     OpenClaw -->|상태 조회 · 승인 기반 제어| Ptero["Pterodactyl Client API"]
     Ptero --> Games["Game Servers"]
+    OpenClaw --> Health["ser8-health · 30분 Heartbeat"]
+    SER8 --> Backup["Local AI 백업 · 복구"]
 ```
 
 OpenClaw Gateway는 `127.0.0.1:18789`에만 바인딩하고, Windows PC에서 SSH 터널과 Gateway Token 인증을 사용해 접속합니다. 외부나 LAN에 Gateway 포트를 직접 노출하지 않는 구성을 의도적으로 유지하고 있습니다.
@@ -55,6 +57,10 @@ OpenClaw Gateway는 `127.0.0.1:18789`에만 바인딩하고, Windows PC에서 SS
 - [x] 제어 후 서버 상태와 자원 사용량 재조회 확인
 - [x] OpenClaw Context 및 Workspace 프롬프트 최적화
 - [x] Exec 정책을 `allowlist`와 `on-miss` 승인 방식으로 변경
+- [x] `ser8-health` 통합 상태 점검과 OpenClaw 자연어 호출 확인
+- [x] 30분 간격 내부 Heartbeat 실행 확인
+- [x] Ubuntu 재부팅 후 주요 서비스 자동 복구 확인
+- [x] Local AI 백업·GPG 암호화·외부 복사·SHA256 검증 완료
 
 상태 조회는 허용된 읽기 전용 명령으로 실행하고, 시작·종료·재시작은 실행할 때마다 사용자가 `Allow once`로 승인합니다.
 
@@ -82,6 +88,17 @@ OpenClaw Gateway는 `127.0.0.1:18789`에만 바인딩하고, Windows PC에서 SS
 - 자연어 요청으로 Pterodactyl 서버 시작·종료·재시작 확인
 - 상태 변경 전 사용자 승인과 제어 후 RUNNING 상태·CPU·RAM·Disk 재조회 확인
 
+## 운영 안정화와 복구
+
+| 항목 | 확인 결과 |
+| --- | --- |
+| 통합 상태 점검 | `ser8-health`로 Ollama, OpenClaw, Open WebUI, Wings, Docker, 자원과 게임 서버 상태 확인 |
+| 자동 점검 | OpenClaw가 30분마다 격리된 경량 Context로 Health Check 실행 |
+| 재부팅 복구 | 실제 Ubuntu 재부팅 후 주요 서비스·API·포트가 수동 조작 없이 정상 복구 |
+| 백업 및 복구 | Local AI 데이터를 암호화해 Windows PC에 복사하고 SHA256 일치와 복구 절차 확인 |
+
+Heartbeat는 현재 내부 점검만 수행하며 장애를 외부로 전송하지 않습니다. Discord 장애 알림은 보류 상태입니다. Pterodactyl Panel DB·Wings 전체 설정·게임 서버 월드 데이터 백업은 이 프로젝트 범위에 포함하지 않습니다.
+
 ## 주요 문제 해결 경험
 
 - Ollama가 내장 GPU를 제외하던 문제를 로그로 추적하고 `OLLAMA_IGPU_ENABLE=1`로 해결
@@ -89,6 +106,9 @@ OpenClaw Gateway는 `127.0.0.1:18789`에만 바인딩하고, Windows PC에서 SS
 - 약 13K token까지 증가한 OpenClaw Context를 분석해 Tracked Prompt Estimate를 약 3,173 tokens로 축소
 - Pterodactyl API 원본 응답의 민감정보 노출 가능성을 확인하고 필요한 상태만 출력하는 읽기 전용 도구로 분리
 - 작은 모델이 API 명령을 안정적으로 만들지 못한 문제를 `ptero-control`과 단순한 start·stop·restart wrapper로 해결
+- 비대화형 실행에서 `sudo docker`가 상태를 잘못 판단한 문제를 HTTP와 systemd 기반 검사로 해결
+- Heartbeat의 `no-route` 원인을 찾아 내부 점검 전용 `target=none`으로 변경
+- 암호화 백업을 외부로 복사한 뒤 서버와 Windows의 SHA256 일치를 확인
 
 자세한 원인과 해결 과정은 [구축 기록](docs/build-log.md)에 정리했습니다.
 
@@ -98,12 +118,14 @@ OpenClaw Gateway는 `127.0.0.1:18789`에만 바인딩하고, Windows PC에서 SS
 - Pterodactyl 인증 파일은 서버 로컬에 보관하고 권한을 `600`으로 제한
 - API 원본 JSON 대신 필요한 상태만 반환하는 wrapper 사용
 - 읽기 전용 조회는 allowlist로 제한하고 상태 변경은 매번 사용자 승인 필요
+- 승인 처리에 실패하면 거부하도록 `askFallback=deny` 적용
+- 백업은 GPG AES256으로 암호화하고 Secret은 별도 영역에 보관
 
 ## 문서
 
 - [구축 기록](docs/build-log.md) — 문제, 원인, 해결, 결과 중심의 구축 과정
 - [벤치마크](docs/benchmark.md) — 실제 모델 측정값과 테스트 조건
-- [로드맵](docs/roadmap.md) — 완료, 진행 중, 예정 작업
+- [로드맵](docs/roadmap.md) — 완료, 보류, 제외 범위와 예정 작업
 
 ## AI 활용
 
