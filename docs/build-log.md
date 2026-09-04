@@ -289,6 +289,8 @@ Heartbeat 대상이 `target=last`였지만 Control UI만 사용하고 있어 결
 
 현재 `target=none`이므로 장애 발생 시 외부로 능동 알림을 보내지는 않습니다. Discord 알림 연동은 의도적으로 보류했습니다.
 
+불필요한 주기적 LLM 실행을 줄이기 위해 기본 `skill-collection-review-main` 자동 작업도 비활성화했습니다.
+
 ## 재부팅 후 자동 복구 검증
 
 ### 검증 목적
@@ -359,3 +361,40 @@ SER8에서 계산한 암호화 파일의 SHA256과 Windows의 `certutil -hashfil
 7. `ser8-health`로 최종 검증
 
 버전 변경 가능성을 고려해 기존 systemd service 전체를 무조건 덮어쓰지 않고, 새 설치본을 우선한 뒤 custom override를 복원하는 방향으로 정리했습니다. `RECOVERY.md`와 실제 백업 파일은 운영용 백업 내부에만 보관하며 GitHub 저장소에는 추가하지 않습니다.
+
+## 인터넷 외부 공개 검토와 운영 정책 결정
+
+### 검토한 문제
+
+Open WebUI와 OpenClaw를 외부에서 사용하기 위해 Domain, HTTPS, Reverse Proxy, Caddy 또는 Nginx, Port Forwarding, Tailscale 구성을 검토했습니다. 그러나 현재 목적은 개인 홈서버의 Local AI를 내부에서 사용하는 것이며, 인터넷 공개로 얻는 편의보다 인증·업데이트·공격 표면을 계속 관리해야 하는 부담이 더 컸습니다.
+
+### 결정
+
+- Local AI 서비스를 인터넷에 직접 공개하지 않음
+- Open WebUI는 내부 네트워크에서만 사용
+- 공유기에 Open WebUI 외부 포트포워딩을 구성하지 않음
+- Ollama는 `127.0.0.1:11434` 유지
+- OpenClaw Gateway는 `127.0.0.1:18789` 유지
+- Control UI는 필요할 때 SSH 터널로 접속
+
+추가적인 LAN 전용 UFW 고정 정책도 현재는 적용하지 않았습니다. 외부 포트포워딩이 없는 현재 구조에서는 과도하게 접근 경로를 고정하지 않고, 향후 Tailscale이나 내부 Reverse Proxy 등 필요한 구성을 선택할 여지를 남겼습니다.
+
+### 결과
+
+Domain, HTTPS, Reverse Proxy와 인터넷 공개는 구현 완료 항목이 아닌 보류 항목으로 정리했습니다. 현재 운영 방식은 내부망 Open WebUI와 SSH 터널 기반 OpenClaw 관리입니다.
+
+## OpenClaw 일상 사용 인터페이스 검토
+
+### 확인한 불편
+
+OpenClaw Control UI를 사용할 때마다 Windows에서 SSH 터널을 직접 열어야 해 일상적인 Agent 요청에는 불편했습니다. Control UI는 Context, Cron, 로그, Exec Policy를 확인하고 디버깅하는 관리 화면에 더 적합했습니다.
+
+### 다음 후보
+
+Discord를 일상적인 OpenClaw 인터페이스로 연결하는 방안을 검토하고 있습니다.
+
+```text
+Discord → OpenClaw → Qwen3.5 4B → SER8 Agent
+```
+
+서버 상태 조회와 Pterodactyl 제어 요청을 Discord에서 전달하고, Control UI는 설정과 디버깅 용도로 사용하는 방향입니다. Discord UI와 장애 알림은 아직 구현하지 않았으며 다음 개발 후보로만 기록합니다.

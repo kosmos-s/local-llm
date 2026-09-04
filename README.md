@@ -99,6 +99,16 @@ OpenClaw Gateway는 `127.0.0.1:18789`에만 바인딩하고, Windows PC에서 SS
 
 Heartbeat는 현재 내부 점검만 수행하며 장애를 외부로 전송하지 않습니다. Discord 장애 알림은 보류 상태입니다. Pterodactyl Panel DB·Wings 전체 설정·게임 서버 월드 데이터 백업은 이 프로젝트 범위에 포함하지 않습니다.
 
+## 운영 접근 정책
+
+- Local AI 서비스를 인터넷에 직접 공개하지 않음
+- Open WebUI는 내부 네트워크에서만 사용하고 공유기 외부 포트포워딩은 사용하지 않음
+- Ollama와 OpenClaw Gateway는 loopback 유지
+- OpenClaw Control UI는 설정·관리·디버깅이 필요할 때 SSH 터널로 접속
+- 향후 구성을 막지 않기 위해 추가적인 LAN 전용 UFW 고정 규칙은 현재 적용하지 않음
+
+일상적인 Agent 사용 인터페이스로 Discord 연동을 검토하고 있지만 아직 구현하지 않았습니다.
+
 ## 주요 문제 해결 경험
 
 - Ollama가 내장 GPU를 제외하던 문제를 로그로 추적하고 `OLLAMA_IGPU_ENABLE=1`로 해결
@@ -109,6 +119,7 @@ Heartbeat는 현재 내부 점검만 수행하며 장애를 외부로 전송하�
 - 비대화형 실행에서 `sudo docker`가 상태를 잘못 판단한 문제를 HTTP와 systemd 기반 검사로 해결
 - Heartbeat의 `no-route` 원인을 찾아 내부 점검 전용 `target=none`으로 변경
 - 암호화 백업을 외부로 복사한 뒤 서버와 Windows의 SHA256 일치를 확인
+- 외부 공개 방식의 필요성을 재검토하고 인터넷에 노출하지 않는 로컬 중심 운영 정책으로 정리
 
 자세한 원인과 해결 과정은 [구축 기록](docs/build-log.md)에 정리했습니다.
 
