@@ -88,6 +88,20 @@ OpenClaw Gateway는 `127.0.0.1:18789`에만 바인딩하고, Windows PC에서 SS
 - 자연어 요청으로 Pterodactyl 서버 시작·종료·재시작 확인
 - 상태 변경 전 사용자 승인과 제어 후 RUNNING 상태·CPU·RAM·Disk 재조회 확인
 
+## 실행 화면
+
+### OpenClaw · Pterodactyl 제어
+
+![OpenClaw Pterodactyl Control](images/openclaw-pterodactyl-control.png)
+
+자연어 요청으로 게임 서버를 시작하고, 승인 기반 제어 후 실제 서버 상태를 다시 확인합니다.
+
+### Open WebUI · Knowledge / RAG
+
+![Open WebUI RAG](images/openwebui-rag-demo.png)
+
+BGE-M3 기반 Knowledge 검색으로 로컬 문서를 조회하고, 답변과 Source가 함께 표시되는 것을 확인했습니다.
+
 ## 운영 안정화와 복구
 
 | 항목 | 확인 결과 |
